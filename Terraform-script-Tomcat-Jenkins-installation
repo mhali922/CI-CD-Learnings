@@ -1,0 +1,117 @@
+ 
+1.)	Terraform Script name – This will provision the Tomcat server - 
+
+instance_tomcat.tf
+provider "aws" {
+  access_key = “PUT YOUR AWS ACCESS KEY HERE”
+  secret_access_key = “PUT YOUR AWS SECRET ACCESS KEY HERE”
+  region = "us-east-1"
+}
+
+resource "aws_instance" "myins_tomcat" {
+  ami = "ami-04763b3055de4860b"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.atls.id]
+  #iam_instance_profile = "${aws_iam_instance_profile.test1_profile.name}"
+  key_name = "mb777"
+  user_data = "${file("use_dat_tomcat.sh")}"
+  tags = {
+          Name = "myins_tomcat"
+         }
+}
+
+resource "aws_security_group" "atls" {
+  name        = "atls"
+  description = "Allow TLS inbound traffic"
+  vpc_id      = "vpc-4b7ea436"
+
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 8090
+    to_port     = 8090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "atls"
+  }
+}
+
+2.)	User data files which is passed into the above terraform files for Jenkins –
+use_dat_tomcat.sh
+
+#!/bin/bash
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk -y
+sudo su
+cd /opt
+wget https://mirrors.gigenet.com/apache/tomcat/tomcat-9/v9.0.41/bin/apache-tomcat-9.0.41.tar.gz
+tar -zxvf apache-tomcat-9.0.41.tar.gz
+cd apache-tomcat-9.0.41
+cd bin
+chmod +x startup.sh
+chmod +x shutdown.sh
+ln -s /opt/apache-tomcat-9.0.41/bin/startup.sh /usr/local/bin/tomcatup
+ln -s /opt/apache-tomcat-9.0.41/bin/shutdown.sh /usr/local/bin/tomcatdown
+
+3.)	Terraform script Name – This will create a Jenkins Server  
+
+instance_jenkins.tf
+resource "aws_instance" "myins_jenkins" {
+  ami = "ami-04763b3055de4860b"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = ["atls"]
+  #iam_instance_profile = "${aws_iam_instance_profile.test1_profile.name}"
+  key_name = "mb777"
+  user_data = "${file("use_data_jenkins.sh")}"
+  tags = {
+          Name = "myins_jenkins"
+         }
+}
+
+4.)	User data files which is passed into the above terraform files for Jenkins –
+
+Use_data_jenkins.sh
+#!/bin/bash
+
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk -y
+sudo su
+wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | sudo apt-key add - > /tmp.txt
+echo deb https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /tmp1.txt
+sudo apt-get update
+sudo apt-get install jenkins -y --allow-unauthenticated
+sudo systemctl start jenkins
+sudo ufw allow 8080 > tmp2.txt
+sudo ufw allow OpenSSH > tmp3.txt
+## install maven 
+cd /opt
+wget http://apache.mirrors.pair.com/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+sudo tar -xvzf apache-maven-3.6.3-bin.tar.gz
+
+
+
