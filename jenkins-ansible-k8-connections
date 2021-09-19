@@ -1,0 +1,28 @@
+generate ssh-keygen on jenkins server into /var/lib/jenkins
+ssh-keygen -t rsa
+Enter file in which to save the key (root/.ssh/id_rsa):  /var/lib/jenkins/.ssh/id_rsa
+ENTER
+ENTER
+this command will generate two keys - id_rsa(Private key) - I will create an admin(any name) user on MANAGE CREDENTIALS in Jenkins and copy this private key.
+                                      id_rsa.pub(Public Key)
+                                      
+Private key can be used on Jenkins GUI as a credentials.
+
+
+If I want to connect my Jenkins server with Ansible server and Kubernetes master - I need to copy the public key(var/lib/jenkins/.ssh/id_rsa) of jenkins server onto the 
+ansible server and Kubernetes server -
+
+  1. Go to Ansible server and create an admin user in order to authentication and running playbooks here-
+  2. adduser admin
+  3. cd /home/admin
+  4. create .ssh directory using mkdir .ssh
+  5. cd .ssh
+  6. vi authorized_keys -> paste the "id_rsa.pub" content fron "jenkins"(refer line number 12) to here.
+  7. chmod 600 authorized_keys
+  8. give the sudo permission to this "admin" user to get the root privileges
+  9. visudo -> root    ALL=(ALL)     ALL
+               admin   ALL=(ALL)     ALL 
+               save :wq
+               
+  Perform the similar steps from line number 15 till line number 25) on kubernetes server as well.
+  
